@@ -1,0 +1,94 @@
+#include <windows.h>
+#include "resource.h"
+
+DLG_REGISTER DIALOGEX 0, 0, 220, 140
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Register Account"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "First Name:", -1, 10, 10, 60, 10
+    EDITTEXT        301, 80, 10, 120, 12, ES_AUTOHSCROLL
+    LTEXT           "Last Name:", -1, 10, 35, 60, 10
+    EDITTEXT        302, 80, 35, 120, 12, ES_AUTOHSCROLL
+    LTEXT           "4-digit PIN:", -1, 10, 60, 60, 10
+    EDITTEXT        303, 80, 60, 50, 12, ES_AUTOHSCROLL | ES_PASSWORD
+    DEFPUSHBUTTON   "Register", IDOK, 40, 100, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 120, 100, 60, 14
+END
+
+DLG_LOGIN DIALOGEX 0, 0, 220, 120
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Login"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Account Number:", -1, 10, 15, 70, 10
+    EDITTEXT        401, 90, 15, 100, 12, ES_AUTOHSCROLL | ES_NUMBER
+    LTEXT           "PIN:", -1, 10, 40, 70, 10
+    EDITTEXT        402, 90, 40, 50, 12, ES_AUTOHSCROLL | ES_PASSWORD
+    DEFPUSHBUTTON   "Login", IDOK, 40, 80, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 120, 80, 60, 14
+END
+
+DLG_ACCOUNT DIALOGEX 0, 0, 260, 200
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Account Management"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Account Number:", -1, 10, 10, 80, 10
+    LTEXT           "", 501, 100, 10, 120, 10
+    LTEXT           "Name:", -1, 10, 30, 80, 10
+    LTEXT           "", 502, 100, 30, 120, 10
+    LTEXT           "Balance:", -1, 10, 50, 80, 10
+    LTEXT           "", 503, 100, 50, 120, 10
+    PUSHBUTTON      "Deposit", 601, 10, 80, 60, 14
+    PUSHBUTTON      "Withdraw", 602, 80, 80, 60, 14
+    PUSHBUTTON      "Change PIN", 603, 150, 80, 80, 14
+    PUSHBUTTON      "Delete Account", 604, 10, 110, 100, 14
+    PUSHBUTTON      "Logout", 605, 150, 110, 80, 14
+END
+
+DLG_DEPOSIT DIALOGEX 0, 0, 180, 90
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Deposit"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Amount:", -1, 10, 15, 60, 10
+    EDITTEXT        701, 70, 15, 80, 12, ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "Deposit", IDOK, 20, 50, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 100, 50, 60, 14
+END
+
+DLG_WITHDRAW DIALOGEX 0, 0, 180, 90
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Withdraw"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Amount:", -1, 10, 15, 60, 10
+    EDITTEXT        801, 70, 15, 80, 12, ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "Withdraw", IDOK, 20, 50, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 100, 50, 60, 14
+END
+
+DLG_PIN DIALOGEX 0, 0, 200, 110
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Change PIN"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Current PIN:", -1, 10, 15, 80, 10
+    EDITTEXT        901, 100, 15, 80, 12, ES_AUTOHSCROLL | ES_PASSWORD
+    LTEXT           "New PIN:", -1, 10, 40, 80, 10
+    EDITTEXT        902, 100, 40, 80, 12, ES_AUTOHSCROLL | ES_PASSWORD
+    DEFPUSHBUTTON   "Change", IDOK, 30, 70, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 110, 70, 60, 14
+END
+
+DLG_DELETE DIALOGEX 0, 0, 180, 80
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Delete Account"
+FONT 8, "MS Sans Serif"
+BEGIN
+    LTEXT           "Enter PIN to confirm:", -1, 10, 10, 120, 10
+    EDITTEXT        1001, 10, 25, 80, 12, ES_AUTOHSCROLL | ES_PASSWORD
+    DEFPUSHBUTTON   "Delete", IDOK, 20, 50, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 100, 50, 60, 14
+END
