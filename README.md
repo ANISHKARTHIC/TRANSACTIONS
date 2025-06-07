@@ -19,7 +19,7 @@ A secure, user-friendly banking application with a Windows GUI interface, built 
   - Persistent storage in binary format
   - Automatic data file creation if not exists
 
-## 📁 Project Structure
+##  Project Structure
 
 | File                | Purpose                                                                 |
 |---------------------|-------------------------------------------------------------------------|
@@ -32,13 +32,13 @@ A secure, user-friendly banking application with a Windows GUI interface, built 
 | `main_gui_res.o`    | Compiled resources (generated during build)                            |
 
 
-## 🛠️ Prerequisites
+##  Prerequisites
 
 - Windows OS
 - MinGW-w64 (for compilation)
 - Basic command-line knowledge
 
-## 🔧 Compilation Instructions
+##  Compilation Instructions
 
 1. **Install MinGW-w64** (if not already installed)
    - Download from: https://www.mingw-w64.org/
@@ -54,7 +54,20 @@ A secure, user-friendly banking application with a Windows GUI interface, built 
    gcc trans.c main_gui_res.o -o trans.exe -mwindows -lcomctl32
    ```
 
-## 🚀 Running the Application
+## 🖼️ Screenshots
+
+### Main Window
+![Main Window](screenshots/main-window.png)
+
+### Account Registration
+![Registration Dialog](screenshots/register.png)
+
+### Account LOGIN
+![Login Dialog](screenshots/login.png)
+
+### Account Management
+![Account Management](screenshots/account.png)
+##  Running the Application
 
 1. Double-click `trans.exe` or run from command line:
    ```bash
@@ -67,7 +80,7 @@ A secure, user-friendly banking application with a Windows GUI interface, built 
    - Export: Save account data to `accounts.txt`
    - Exit: Close the application
 
-## 💻 Usage Guide
+##  Usage Guide
 
 ### Creating a New Account
 1. Click "Register"
@@ -85,25 +98,10 @@ A secure, user-friendly banking application with a Windows GUI interface, built 
 - **Delete Account**: Requires account PIN for confirmation
 - **Logout**: Returns to main menu
 
-## 🔒 Security Notes
+##  Security Notes
 
 - All PINs are stored securely in the database
 - Account numbers range from 100 to 999
 - Data is automatically saved after each operation
 - Deleted accounts are marked as inactive but remain in the database
 
-## 📜 License
-
-This project is open-source and available under the MIT License.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-- **PIN:** Must be exactly 4 digits
-- **Deleted accounts:** Marked as inactive and can be reused
-- **Cross-platform:** Works on Windows and Linux (tested with GCC)
-- **Security:** PIN is required for all sensitive operations
-
-## License
-
-This project is for educational purposes.
