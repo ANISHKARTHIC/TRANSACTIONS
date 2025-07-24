@@ -569,36 +569,57 @@ INT_PTR CALLBACK DeleteDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lP
 }
 
 // --- Export accounts to accounts.txt ---
+// Helper function to open a file and handle errors
+static FILE* openFileWithError(HWND hwnd, const char* filename, const char* mode, const char* errorMsgTitle) {
+    FILE* file = fopen(filename, mode);
+    if (!file) {
+        MessageBox(hwnd, errorMsgTitle, "Error", MB_OK | MB_ICONERROR);
+    }
+    return file;
+}
+
+// Export all active accounts to accounts.txt
 void exportAccounts(HWND hwnd) {
-    FILE *fPtr = fopen("credit.dat", "rb");
-    FILE *out = fopen("accounts.txt", "w");
-    if (!fPtr || !out) {
-        MessageBox(hwnd, "Error opening file for export.", "Error", MB_OK | MB_ICONERROR);
-        if (fPtr) fclose(fPtr);
-        if (out) fclose(out);
+    // Open the input (credit.dat) and output (accounts.txt) files
+    FILE *fPtr = openFileWithError(hwnd, "credit.dat", "rb", "Could not open credit.dat.");
+    if (!fPtr) return;
+    FILE *out = openFileWithError(hwnd, "accounts.txt", "w", "Could not open accounts.txt for writing.");
+    if (!out) {
+        fclose(fPtr);
         return;
     }
-    
+
+    // Write header row to output file
+    fprintf(out, "%-6s %-15s %-10s %-10s %-7s\n", "Acct", "Last Name", "First Name", "Balance", "Status");
+
     struct clientData client;
-    fprintf(out, "%-6s %-15s %-10s %10s %-7s\n", "Acct", "Last Name", "First Name", "Balance", "Status");
-    
+    // Iterate through all possible accounts
     for (int i = MIN_ACCOUNT; i <= MAX_ACCOUNT; ++i) {
-    fread(&client, sizeof(client), 1, fPtr);
-    
-    if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT && client.isActive) {
-        fprintf(out, "%-6d %-15s %-10s %10.2f %-7s\n",
-            client.acctNum,
-            client.lastName,
-            client.firstName,
-            client.balance,
-            "Active");
+        // Read client record
+        size_t readCount = fread(&client, sizeof(client), 1, fPtr);
+        if (readCount != 1) {
+            // If read fails, break early (file may be shorter than expected)
+            break;
+        }
+        // Only export active accounts within valid range
+        if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT && client.isActive == 1) {
+            fprintf(out, "%-6d %-15s %-10s %10.2f %-7s\n",
+                client.acctNum,
+                client.lastName,
+                client.firstName,
+                client.balance,
+                "Active");
+        }
     }
-}
-    
+
+    // Close files
     fclose(fPtr);
     fclose(out);
-    MessageBox(hwnd, "accounts.txt generated successfully.", "Export", MB_OK | MB_ICONINFORMATION);
+
+    // Notify user of successful export
+    MessageBox(hwnd, "Export completed successfully.", "Success", MB_OK | MB_ICONINFORMATION);
 }
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -606,10 +627,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     HWND hwnd;
     MSG Msg;
     
-    // Initialize common controls
     InitCommonControls();
     
-    // Manually load and initialize comctl32 version 6 if available
     HMODULE hComCtl = LoadLibrary(TEXT("comctl32.dll"));
     if (hComCtl) {
         typedef BOOL (WINAPI *PFNINITCOMMONCONTROLSEX)(const LPINITCOMMONCONTROLSEX);
