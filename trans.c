@@ -109,6 +109,8 @@ INT_PTR CALLBACK DepositDlgProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK WithdrawDlgProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK PinDlgProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK DeleteDlgProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK AdminDlgProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK AdminPassDlgProc(HWND, UINT, WPARAM, LPARAM);
 
 // Helper functions
 int readClient(int accNum, struct clientData* client);
@@ -230,38 +232,196 @@ INT_PTR CALLBACK LoginDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
         } else if (LOWORD(wParam) == IDCANCEL) {
             EndDialog(hDlg, IDCANCEL);
             return TRUE;
+        } else if (LOWORD(wParam) == BTN_ADMIN) {
+            // Ask for admin password first
+            INT_PTR passResult = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ADMIN_PASS), GetParent(hDlg), AdminPassDlgProc);
+            if (passResult == IDOK) {
+                DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ADMIN), GetParent(hDlg), AdminDlgProc);
+            }
+            return TRUE;
         }
         break;
     }
     return FALSE;
 }
 
+// --- Admin Password Dialog ---
+INT_PTR CALLBACK AdminPassDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    static char passBuf[32];
+    switch (message) {
+    case WM_INITDIALOG:
+        CenterWindow(hDlg);
+        SetDlgItemText(hDlg, EDIT_ADMIN_PASS, "");
+        return TRUE;
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDOK) {
+            GetDlgItemText(hDlg, EDIT_ADMIN_PASS, passBuf, sizeof(passBuf));
+            if (strcmp(passBuf, "admin") == 0) {
+                EndDialog(hDlg, IDOK);
+            } else {
+                MessageBox(hDlg, "Incorrect password.", "Error", MB_OK | MB_ICONERROR);
+                SetDlgItemText(hDlg, EDIT_ADMIN_PASS, "");
+            }
+            return TRUE;
+        } else if (LOWORD(wParam) == IDCANCEL) {
+            EndDialog(hDlg, IDCANCEL);
+            return TRUE;
+        }
+        break;
+    }
+    return FALSE;
+}
+
+// --- Admin Dialog ---
+#include <stdlib.h>
+
+#define MAX_ACCOUNTS (MAX_ACCOUNT - MIN_ACCOUNT + 1)
+
+struct adminAccountList {
+    struct clientData accounts[MAX_ACCOUNTS];
+    int count;
+    int sortBy; // 0: account, 1: first name, 2: last name
+    char search[64];
+};
+
+static void LoadAllActiveAccounts(struct adminAccountList* list) {
+    FILE* fPtr = fopen("credit.dat", "rb");
+    if (!fPtr) {
+        list->count = 0;
+        return;
+    }
+    struct clientData client;
+    list->count = 0;
+    for (int i = MIN_ACCOUNT; i <= MAX_ACCOUNT; ++i) {
+        fread(&client, sizeof(client), 1, fPtr);
+        if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT && client.isActive) {
+            list->accounts[list->count++] = client;
+        }
+    }
+    fclose(fPtr);
+}
+
+static int cmpByAccount(const void* a, const void* b) {
+    const struct clientData* ca = (const struct clientData*)a;
+    const struct clientData* cb = (const struct clientData*)b;
+    return (int)ca->acctNum - (int)cb->acctNum;
+}
+static int cmpByFirstName(const void* a, const void* b) {
+    const struct clientData* ca = (const struct clientData*)a;
+    const struct clientData* cb = (const struct clientData*)b;
+    int first = strcmp(ca->firstName, cb->firstName);
+    if (first != 0) return first;
+    return strcmp(ca->lastName, cb->lastName);
+}
+static int cmpByLastName(const void* a, const void* b) {
+    const struct clientData* ca = (const struct clientData*)a;
+    const struct clientData* cb = (const struct clientData*)b;
+    int last = strcmp(ca->lastName, cb->lastName);
+    if (last != 0) return last;
+    return strcmp(ca->firstName, cb->firstName);
+}
+
+static void FilterAndShowAccounts(HWND hDlg, struct adminAccountList* list) {
+    HWND hList = GetDlgItem(hDlg, LIST_ACCOUNTS);
+    SendMessage(hList, LB_RESETCONTENT, 0, 0);
+    for (int i = 0; i < list->count; ++i) {
+        struct clientData* c = &list->accounts[i];
+        char buf[128];
+        // Filter by search
+        if (list->search[0]) {
+            char accStr[16];
+            sprintf(accStr, "%u", c->acctNum);
+            if (strstr(c->firstName, list->search) == NULL &&
+                strstr(c->lastName, list->search) == NULL &&
+                strstr(accStr, list->search) == NULL) {
+                continue;
+            }
+        }
+        snprintf(buf, sizeof(buf), "%3u | %-9s | %-14s | %10.2f",
+            c->acctNum, c->firstName, c->lastName, c->balance);
+        SendMessage(hList, LB_ADDSTRING, 0, (LPARAM)buf);
+    }
+}
+
+INT_PTR CALLBACK AdminDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    static struct adminAccountList s_list;
+    switch (message) {
+    case WM_INITDIALOG:
+        CenterWindow(hDlg);
+        s_list.sortBy = 0;
+        s_list.search[0] = '\0';
+        LoadAllActiveAccounts(&s_list);
+        qsort(s_list.accounts, s_list.count, sizeof(struct clientData), cmpByAccount);
+        FilterAndShowAccounts(hDlg, &s_list);
+        SetDlgItemText(hDlg, EDIT_SEARCH, "");
+        return TRUE;
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case BTN_CLOSE_ADMIN:
+            EndDialog(hDlg, IDOK);
+            return TRUE;
+        case BTN_SORT_TOGGLE:
+            s_list.sortBy = (s_list.sortBy + 1) % 3;
+            if (s_list.sortBy == 0)
+                qsort(s_list.accounts, s_list.count, sizeof(struct clientData), cmpByAccount);
+            else if (s_list.sortBy == 1)
+                qsort(s_list.accounts, s_list.count, sizeof(struct clientData), cmpByFirstName);
+            else
+                qsort(s_list.accounts, s_list.count, sizeof(struct clientData), cmpByLastName);
+            FilterAndShowAccounts(hDlg, &s_list);
+            return TRUE;
+        case BTN_SEARCH_ICON:
+            // Just trigger filter based on current search text
+            GetDlgItemText(hDlg, EDIT_SEARCH, s_list.search, sizeof(s_list.search));
+            FilterAndShowAccounts(hDlg, &s_list);
+            return TRUE;
+        case EDIT_SEARCH: {
+            if (HIWORD(wParam) == EN_CHANGE) {
+                GetDlgItemText(hDlg, EDIT_SEARCH, s_list.search, sizeof(s_list.search));
+                FilterAndShowAccounts(hDlg, &s_list);
+            }
+            return TRUE;
+        }
+        }
+        break;
+    }
+    return FALSE;
+}
+
+
+
 // --- Account Management Dialog ---
+static void RefreshAccountLabels(HWND hDlg) {
+    char buf[64];
+    wsprintf(buf, "%d", g_loggedInClient.acctNum);
+    SetDlgItemText(hDlg, 501, buf);
+    wsprintf(buf, "%s %s", g_loggedInClient.firstName, g_loggedInClient.lastName);
+    SetDlgItemText(hDlg, 502, buf);
+    char balanceStr[32];
+    snprintf(balanceStr, sizeof(balanceStr), "%.2f", g_loggedInClient.balance);
+    SetDlgItemTextA(hDlg, TEXT_BALANCE, balanceStr);
+}
+
 INT_PTR CALLBACK AccountDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     switch (message) {
     case WM_INITDIALOG: {
         CenterWindow(hDlg);
-        char buf[64];
-        wsprintf(buf, "%d", g_loggedInClient.acctNum);
-        SetDlgItemText(hDlg, 501, buf);
-        wsprintf(buf, "%s %s", g_loggedInClient.firstName, g_loggedInClient.lastName);
-        SetDlgItemText(hDlg, 502, buf);
-        // Format balance with 2 decimal places
-        char balanceStr[32];
-        snprintf(balanceStr, sizeof(balanceStr), "%.2f", g_loggedInClient.balance);
-        SetDlgItemTextA(hDlg, TEXT_BALANCE, balanceStr);
+        RefreshAccountLabels(hDlg);
         return TRUE;
     }
     case WM_COMMAND:
         switch(LOWORD(wParam)) {
             case 601: // Deposit
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_DEPOSIT), hDlg, DepositDlgProc);
+                RefreshAccountLabels(hDlg);
                 break;
             case 602: // Withdraw
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_WITHDRAW), hDlg, WithdrawDlgProc);
+                RefreshAccountLabels(hDlg);
                 break;
             case 603: // Change PIN
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_PIN), hDlg, PinDlgProc);
+                RefreshAccountLabels(hDlg);
                 break;
             case 604: // Delete Account
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_DELETE), hDlg, DeleteDlgProc);
@@ -279,6 +439,7 @@ INT_PTR CALLBACK AccountDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
     }
     return FALSE;
 }
+
 
 // --- Deposit Dialog ---
 INT_PTR CALLBACK DepositDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -422,13 +583,17 @@ void exportAccounts(HWND hwnd) {
     fprintf(out, "%-6s %-15s %-10s %10s %-7s\n", "Acct", "Last Name", "First Name", "Balance", "Status");
     
     for (int i = MIN_ACCOUNT; i <= MAX_ACCOUNT; ++i) {
-        fread(&client, sizeof(client), 1, fPtr);
-        if (client.acctNum != 0) {
-            fprintf(out, "%-6d %-15s %-10s %10.2f %-7s\n",
-                client.acctNum, client.lastName, client.firstName, client.balance,
-                client.isActive ? "Active" : "Deleted");
-        }
+    fread(&client, sizeof(client), 1, fPtr);
+    
+    if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT && client.isActive) {
+        fprintf(out, "%-6d %-15s %-10s %10.2f %-7s\n",
+            client.acctNum,
+            client.lastName,
+            client.firstName,
+            client.balance,
+            "Active");
     }
+}
     
     fclose(fPtr);
     fclose(out);

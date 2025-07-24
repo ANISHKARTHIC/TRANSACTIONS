@@ -35,6 +35,19 @@
 #define BTN_DELETE   604
 #define BTN_LOGOUT   605
 
+// Admin dialog
+#define DLG_ADMIN 801
+#define LIST_ACCOUNTS 802
+#define EDIT_SEARCH 803
+#define BTN_SORT_TOGGLE 804
+#define BTN_SEARCH_ICON 805
+#define BTN_CLOSE_ADMIN 806
+#define BTN_ADMIN 807
+
+// Admin password dialog
+#define DLG_ADMIN_PASS 808
+#define EDIT_ADMIN_PASS 809
+
 // Deposit/Withdraw dialogs
 #define EDIT_AMOUNT 701
 
