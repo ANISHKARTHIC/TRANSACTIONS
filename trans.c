@@ -14,9 +14,6 @@ const char g_szClassName[] = "BankAppWindowClass";
 #define MIN_ACCOUNT 100
 #define MAX_ACCOUNT 999
 
-#define MIN_ACCOUNT 100
-#define MAX_ACCOUNT 999
-
 struct clientData {
     unsigned int acctNum; // account number (3 digits)
     char lastName[15];
@@ -42,7 +39,7 @@ INT_PTR CALLBACK RegisterDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
     case WM_INITDIALOG:
         return TRUE;
     case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK) {
+        if (LOWORD(wParam) == IDOK) { 
             char fname[16] = "", lname[16] = "", pin[8] = "";
             GetDlgItemText(hDlg, EDIT_FIRSTNAME, fname, sizeof(fname));
             GetDlgItemText(hDlg, EDIT_LASTNAME, lname, sizeof(lname));
@@ -590,7 +587,7 @@ void exportAccounts(HWND hwnd) {
     }
 
     // Write header row to output file
-    fprintf(out, "%-6s %-15s %-10s %-10s %-7s\n", "Acct", "Last Name", "First Name", "Balance", "Status");
+    fprintf(out, "%-6s %-15s %-10s %-10s %-7s\n", "Acct",  "First Name","Last Name", "Balance", "Status");
 
     struct clientData client;
     // Iterate through all possible accounts
@@ -605,8 +602,8 @@ void exportAccounts(HWND hwnd) {
         if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT && client.isActive == 1) {
             fprintf(out, "%-6d %-15s %-10s %10.2f %-7s\n",
                 client.acctNum,
-                client.lastName,
                 client.firstName,
+                client.lastName,
                 client.balance,
                 "Active");
         }
