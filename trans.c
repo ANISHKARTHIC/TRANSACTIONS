@@ -14,6 +14,33 @@ const char g_szClassName[] = "BankAppWindowClass";
 #define MIN_ACCOUNT 100
 #define MAX_ACCOUNT 999
 
+// --- Transaction record structure ---
+typedef struct {
+    unsigned int acctNum;
+    char type[10]; // "DEPOSIT" or "WITHDRAW"
+    double amount;
+    double balanceAfter;
+    char timestamp[24]; // "YYYY-MM-DD HH:MM:SS"
+} transactionRecord;
+
+// --- Append a transaction record to the log file ---
+void logTransaction(unsigned int acctNum, const char* type, double amount, double balanceAfter) {
+    FILE* f = fopen("transactions.dat", "ab");
+    if (!f) return;
+    transactionRecord rec;
+    rec.acctNum = acctNum;
+    strncpy(rec.type, type, sizeof(rec.type)-1);
+    rec.type[sizeof(rec.type)-1] = '\0';
+    rec.amount = amount;
+    rec.balanceAfter = balanceAfter;
+    SYSTEMTIME st;
+    GetLocalTime(&st);
+    snprintf(rec.timestamp, sizeof(rec.timestamp), "%04d-%02d-%02d %02d:%02d:%02d",
+        st.wYear, st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond);
+    fwrite(&rec, sizeof(transactionRecord), 1, f);
+    fclose(f);
+}
+
 struct clientData {
     unsigned int acctNum; // account number (3 digits)
     char lastName[15];
@@ -21,6 +48,8 @@ struct clientData {
     double balance;
     char pin[5];          // 4-digit PIN
     int isActive;         // 1 = active, 0 = deleted
+    char email[40];       // email address
+    char phone[20];       // phone number
 };
 
 // Find an available account number
@@ -40,11 +69,13 @@ INT_PTR CALLBACK RegisterDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
         return TRUE;
     case WM_COMMAND:
         if (LOWORD(wParam) == IDOK) { 
-            char fname[16] = "", lname[16] = "", pin[8] = "";
+            char fname[16] = "", lname[16] = "", pin[8] = "", email[40] = "", phone[20] = "";
             GetDlgItemText(hDlg, EDIT_FIRSTNAME, fname, sizeof(fname));
             GetDlgItemText(hDlg, EDIT_LASTNAME, lname, sizeof(lname));
             GetDlgItemText(hDlg, EDIT_PIN, pin, sizeof(pin));
-            if (strlen(fname) == 0 || strlen(lname) == 0 || strlen(pin) != 4) {
+            GetDlgItemText(hDlg, EDIT_EMAIL, email, sizeof(email));
+            GetDlgItemText(hDlg, EDIT_PHONE, phone, sizeof(phone));
+            if (strlen(fname) == 0 || strlen(lname) == 0 || strlen(pin) != 4 || strlen(email) == 0 || strlen(phone) == 0) {
                 MessageBox(hDlg, "Please enter all fields. PIN must be 4 digits.", "Error", MB_OK | MB_ICONERROR);
                 return TRUE;
             }
@@ -70,16 +101,24 @@ INT_PTR CALLBACK RegisterDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
                 return TRUE;
             }
             struct clientData client = {0, "", "", 0.0, "", 0};
-            strncpy(client.firstName, fname, sizeof(client.firstName) - 1);
-            strncpy(client.lastName, lname, sizeof(client.lastName) - 1);
-            strncpy(client.pin, pin, 4); client.pin[4] = '\0';
             client.acctNum = accNum;
+            strncpy(client.firstName, fname, sizeof(client.firstName)-1);
+            client.firstName[sizeof(client.firstName)-1] = '\0';
+            strncpy(client.lastName, lname, sizeof(client.lastName)-1);
+            client.lastName[sizeof(client.lastName)-1] = '\0';
+            strncpy(client.pin, pin, 4);
+            client.pin[4] = '\0';
             client.balance = 0.0;
             client.isActive = 1;
+            strncpy(client.email, email, sizeof(client.email)-1);
+            client.email[sizeof(client.email)-1] = '\0';
+            strncpy(client.phone, phone, sizeof(client.phone)-1);
+            client.phone[sizeof(client.phone)-1] = '\0';
             fseek(fPtr, (accNum - MIN_ACCOUNT) * sizeof(struct clientData), SEEK_SET);
             fwrite(&client, sizeof(struct clientData), 1, fPtr);
             fflush(fPtr);
             fclose(fPtr);
+            logTransaction(accNum, "CREATE", 0.0, client.balance);
             char msg[128];
             wsprintf(msg, "Account created!\nYour account number is: %d", accNum);
             MessageBox(hDlg, msg, "Success", MB_OK | MB_ICONINFORMATION);
@@ -108,8 +147,10 @@ INT_PTR CALLBACK PinDlgProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK DeleteDlgProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK AdminDlgProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK AdminPassDlgProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK HistoryDlgProc(HWND, UINT, WPARAM, LPARAM);
 
 // Helper functions
+
 int readClient(int accNum, struct clientData* client);
 int writeClient(int accNum, struct clientData* client);
 void exportAccounts(HWND hwnd);
@@ -281,7 +322,7 @@ struct adminAccountList {
     char search[64];
 };
 
-static void LoadAllActiveAccounts(struct adminAccountList* list) {
+static void LoadAllAccounts(struct adminAccountList* list, int showDeleted) {
     FILE* fPtr = fopen("credit.dat", "rb");
     if (!fPtr) {
         list->count = 0;
@@ -291,12 +332,20 @@ static void LoadAllActiveAccounts(struct adminAccountList* list) {
     list->count = 0;
     for (int i = MIN_ACCOUNT; i <= MAX_ACCOUNT; ++i) {
         fread(&client, sizeof(client), 1, fPtr);
-        if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT && client.isActive) {
-            list->accounts[list->count++] = client;
+        if (client.acctNum >= MIN_ACCOUNT && client.acctNum <= MAX_ACCOUNT) {
+            if ((showDeleted && !client.isActive) || (!showDeleted && client.isActive)) {
+                list->accounts[list->count++] = client;
+            }
         }
     }
     fclose(fPtr);
 }
+
+// Backward compatibility for old code
+static void LoadAllActiveAccounts(struct adminAccountList* list) {
+    LoadAllAccounts(list, 0);
+}
+
 
 static int cmpByAccount(const void* a, const void* b) {
     const struct clientData* ca = (const struct clientData*)a;
@@ -342,20 +391,32 @@ static void FilterAndShowAccounts(HWND hDlg, struct adminAccountList* list) {
 
 INT_PTR CALLBACK AdminDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
     static struct adminAccountList s_list;
+    static int showDeleted = 0;
     switch (message) {
     case WM_INITDIALOG:
         CenterWindow(hDlg);
         s_list.sortBy = 0;
         s_list.search[0] = '\0';
-        LoadAllActiveAccounts(&s_list);
+        showDeleted = 0;
+        LoadAllAccounts(&s_list, showDeleted);
         qsort(s_list.accounts, s_list.count, sizeof(struct clientData), cmpByAccount);
         FilterAndShowAccounts(hDlg, &s_list);
         SetDlgItemText(hDlg, EDIT_SEARCH, "");
+        SetDlgItemText(hDlg, BTN_SORT_TOGGLE, "Sort");
+        SetDlgItemText(hDlg, BTN_SEARCH_ICON, "🔍");
+        SetDlgItemText(hDlg, BTN_ADMIN, "Show Deleted");
         return TRUE;
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
         case BTN_CLOSE_ADMIN:
             EndDialog(hDlg, IDOK);
+            return TRUE;
+        case BTN_ADMIN: // Toggle deleted accounts
+            showDeleted = !showDeleted;
+            LoadAllAccounts(&s_list, showDeleted);
+            qsort(s_list.accounts, s_list.count, sizeof(struct clientData), cmpByAccount);
+            FilterAndShowAccounts(hDlg, &s_list);
+            SetDlgItemText(hDlg, BTN_ADMIN, showDeleted ? "Show Active" : "Show Deleted");
             return TRUE;
         case BTN_SORT_TOGGLE:
             s_list.sortBy = (s_list.sortBy + 1) % 3;
@@ -423,6 +484,9 @@ INT_PTR CALLBACK AccountDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
             case 604: // Delete Account
                 DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_DELETE), hDlg, DeleteDlgProc);
                 break;
+            case 606: // Transaction History
+                DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_HISTORY), hDlg, HistoryDlgProc);
+                break;
             case 605: // Logout
                 g_loggedInAccount = 0;
                 EndDialog(hDlg, IDOK);
@@ -456,6 +520,7 @@ INT_PTR CALLBACK DepositDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM l
             }
             g_loggedInClient.balance += amt;
             writeClient(g_loggedInAccount, &g_loggedInClient);
+            logTransaction(g_loggedInAccount, "DEPOSIT", amt, g_loggedInClient.balance);
             MessageBox(hDlg, "Deposit successful.", "Success", MB_OK | MB_ICONINFORMATION);
             EndDialog(hDlg, IDOK);
             return TRUE;
@@ -486,6 +551,7 @@ INT_PTR CALLBACK WithdrawDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
             }
             g_loggedInClient.balance -= amt;
             writeClient(g_loggedInAccount, &g_loggedInClient);
+            logTransaction(g_loggedInAccount, "WITHDRAW", amt, g_loggedInClient.balance);
             MessageBox(hDlg, "Withdrawal successful.", "Success", MB_OK | MB_ICONINFORMATION);
             EndDialog(hDlg, IDOK);
             return TRUE;
@@ -682,4 +748,34 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         }
     }
     return (int)Msg.wParam;
+}
+
+// --- Transaction History Dialog Procedure ---
+INT_PTR CALLBACK HistoryDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+    case WM_INITDIALOG: {
+        CenterWindow(hDlg);
+        HWND hList = GetDlgItem(hDlg, LIST_HISTORY);
+        FILE* f = fopen("transactions.dat", "rb");
+        if (f) {
+            transactionRecord rec;
+            while (fread(&rec, sizeof(transactionRecord), 1, f) == 1) {
+                if (rec.acctNum == g_loggedInAccount) {
+                    char entry[128];
+                    snprintf(entry, sizeof(entry), "%s | %s | %.2f | %.2f", rec.type, rec.timestamp, rec.amount, rec.balanceAfter);
+                    SendMessage(hList, LB_ADDSTRING, 0, (LPARAM)entry);
+                }
+            }
+            fclose(f);
+        }
+        return TRUE;
+    }
+    case WM_COMMAND:
+        if (LOWORD(wParam) == IDCANCEL) {
+            EndDialog(hDlg, IDCANCEL);
+            return TRUE;
+        }
+        break;
+    }
+    return FALSE;
 }

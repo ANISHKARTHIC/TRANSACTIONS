@@ -15,11 +15,15 @@
 #define DLG_WITHDRAW 205
 #define DLG_PIN      206
 #define DLG_DELETE   207
+#define DLG_HISTORY  208
+#define LIST_HISTORY 1101
 
 // Register dialog controls
 #define EDIT_FIRSTNAME 301
 #define EDIT_LASTNAME  302
 #define EDIT_PIN       303
+#define EDIT_EMAIL     304
+#define EDIT_PHONE     305
 
 // Login dialog controls
 #define EDIT_ACCOUNT   401
@@ -34,6 +38,7 @@
 #define BTN_CHGPIN   603
 #define BTN_DELETE   604
 #define BTN_LOGOUT   605
+#define BTN_HISTORY  606
 
 // Admin dialog
 #define DLG_ADMIN 801
