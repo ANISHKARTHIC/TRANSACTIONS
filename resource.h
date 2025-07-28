@@ -48,9 +48,16 @@
 #define BTN_SEARCH_ICON 805
 #define BTN_CLOSE_ADMIN 806
 #define BTN_ADMIN 807
+#define BTN_FORGOT 808
 
 // Admin password dialog
 #define DLG_ADMIN_PASS 808
+#define DLG_FORGOT 809
+#define RADIO_FORGOT_ACC 9010
+#define RADIO_FORGOT_PIN 9011
+#define EDIT_FORGOT_FIRST 9012
+#define EDIT_FORGOT_LAST 9013
+#define EDIT_FORGOT_PHONE 9014
 #define EDIT_ADMIN_PASS 809
 
 // Deposit/Withdraw dialogs

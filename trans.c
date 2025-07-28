@@ -9,6 +9,8 @@
 
 #pragma comment(lib, "comctl32.lib")
 
+void CenterWindow(HWND hwnd);
+
 const char g_szClassName[] = "BankAppWindowClass";
 
 #define MIN_ACCOUNT 100
@@ -122,6 +124,73 @@ INT_PTR CALLBACK RegisterDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM 
             char msg[128];
             wsprintf(msg, "Account created!\nYour account number is: %d", accNum);
             MessageBox(hDlg, msg, "Success", MB_OK | MB_ICONINFORMATION);
+            EndDialog(hDlg, IDOK);
+            return TRUE;
+        } else if (LOWORD(wParam) == IDCANCEL) {
+            EndDialog(hDlg, IDCANCEL);
+            return TRUE;
+        }
+        break;
+    }
+    return FALSE;
+}
+
+// --- Forgot Details Dialog Procedure ---
+INT_PTR CALLBACK ForgotDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+    case WM_INITDIALOG:
+        CenterWindow(hDlg);
+        CheckRadioButton(hDlg, RADIO_FORGOT_ACC, RADIO_FORGOT_PIN, RADIO_FORGOT_ACC);
+        EnableWindow(GetDlgItem(hDlg, EDIT_FORGOT_FIRST), FALSE);
+        EnableWindow(GetDlgItem(hDlg, EDIT_FORGOT_LAST), FALSE);
+        return TRUE;
+    case WM_COMMAND:
+        if (LOWORD(wParam) == RADIO_FORGOT_ACC) {
+            EnableWindow(GetDlgItem(hDlg, EDIT_FORGOT_FIRST), FALSE);
+            EnableWindow(GetDlgItem(hDlg, EDIT_FORGOT_LAST), FALSE);
+        } else if (LOWORD(wParam) == RADIO_FORGOT_PIN) {
+            EnableWindow(GetDlgItem(hDlg, EDIT_FORGOT_FIRST), TRUE);
+            EnableWindow(GetDlgItem(hDlg, EDIT_FORGOT_LAST), TRUE);
+        } else if (LOWORD(wParam) == IDOK) {
+            char first[32] = "", last[32] = "", phone[32] = "";
+            GetDlgItemText(hDlg, EDIT_FORGOT_FIRST, first, sizeof(first));
+            GetDlgItemText(hDlg, EDIT_FORGOT_LAST, last, sizeof(last));
+            GetDlgItemText(hDlg, EDIT_FORGOT_PHONE, phone, sizeof(phone));
+            int mode = (IsDlgButtonChecked(hDlg, RADIO_FORGOT_ACC) == BST_CHECKED) ? 0 : 1;
+            FILE* f = fopen("credit.dat", "rb");
+            if (!f) {
+                MessageBox(hDlg, "Could not open data file.", "Error", MB_OK | MB_ICONERROR);
+                return TRUE;
+            }
+            struct clientData client;
+            int found = 0;
+            for (int i = MIN_ACCOUNT; i <= MAX_ACCOUNT; ++i) {
+                if (fread(&client, sizeof(client), 1, f) != 1) break;
+                if (client.acctNum < MIN_ACCOUNT || client.acctNum > MAX_ACCOUNT || !client.isActive) continue;
+                if (mode == 0) {
+                    // Recover account number by phone
+                    if (strcmp(client.phone, phone) == 0) {
+                        char msg[128];
+                        wsprintf(msg, "Your account number is: %d", client.acctNum);
+                        MessageBox(hDlg, msg, "Account Number", MB_OK | MB_ICONINFORMATION);
+                        found = 1;
+                        break;
+                    }
+                } else {
+                    // Recover PIN by first, last, phone
+                    if (strcmp(client.firstName, first) == 0 && strcmp(client.lastName, last) == 0 && strcmp(client.phone, phone) == 0) {
+                        char msg[128];
+                        wsprintf(msg, "Your PIN is: %s", client.pin);
+                        MessageBox(hDlg, msg, "PIN", MB_OK | MB_ICONINFORMATION);
+                        found = 1;
+                        break;
+                    }
+                }
+            }
+            fclose(f);
+            if (!found) {
+                MessageBox(hDlg, "No matching account found.", "Not Found", MB_OK | MB_ICONERROR);
+            }
             EndDialog(hDlg, IDOK);
             return TRUE;
         } else if (LOWORD(wParam) == IDCANCEL) {
@@ -271,6 +340,16 @@ INT_PTR CALLBACK LoginDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lPa
             EndDialog(hDlg, IDCANCEL);
             return TRUE;
         } else if (LOWORD(wParam) == BTN_ADMIN) {
+            // Ask for admin password first
+            INT_PTR passResult = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ADMIN_PASS), GetParent(hDlg), AdminPassDlgProc);
+            if (passResult == IDOK) {
+                DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ADMIN), GetParent(hDlg), AdminDlgProc);
+            }
+            return TRUE;
+        } else if (LOWORD(wParam) == BTN_FORGOT) {
+            DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_FORGOT), GetParent(hDlg), ForgotDlgProc);
+            return TRUE;
+
             // Ask for admin password first
             INT_PTR passResult = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(DLG_ADMIN_PASS), GetParent(hDlg), AdminPassDlgProc);
             if (passResult == IDOK) {

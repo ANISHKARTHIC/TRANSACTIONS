@@ -31,7 +31,26 @@ BEGIN
     EDITTEXT        402, 90, 40, 50, 12, ES_AUTOHSCROLL | ES_PASSWORD
     DEFPUSHBUTTON   "Login", IDOK, 40, 80, 60, 14
     PUSHBUTTON      "Cancel", IDCANCEL, 120, 80, 60, 14
-    PUSHBUTTON      "Admin", BTN_ADMIN, 40, 110, 140, 14
+    PUSHBUTTON      "Admin", BTN_ADMIN, 40, 110, 90, 14
+    PUSHBUTTON      "Forgot Details", BTN_FORGOT, 135, 110, 80, 14
+END
+
+DLG_FORGOT DIALOGEX 0, 0, 220, 130
+STYLE DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Forgot Details"
+FONT 8, "MS Sans Serif"
+BEGIN
+    GROUPBOX        "Recovery Type", -1, 10, 10, 200, 30
+    AUTORADIOBUTTON "Forgot Account Number", 9010, 20, 22, 100, 10, WS_GROUP | WS_TABSTOP
+    AUTORADIOBUTTON "Forgot PIN", 9011, 125, 22, 70, 10
+    LTEXT           "First Name:", -1, 10, 50, 60, 10
+    EDITTEXT        9012, 80, 50, 120, 12, ES_AUTOHSCROLL
+    LTEXT           "Last Name:", -1, 10, 70, 60, 10
+    EDITTEXT        9013, 80, 70, 120, 12, ES_AUTOHSCROLL
+    LTEXT           "Phone Number:", -1, 10, 90, 70, 10
+    EDITTEXT        9014, 80, 90, 120, 12, ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "Recover", IDOK, 40, 110, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 120, 110, 60, 14
 END
 
 // Admin dialog for search/sort/list accounts
